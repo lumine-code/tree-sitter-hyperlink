@@ -1,62 +1,59 @@
 {
-  "name": "tree-sitter-hyperlink",
-  "version": "0.0.1",
-  "description": "Tree-sitter grammar for detecting URLs in arbitrary text",
+  "name": "@lumine-code/tree-sitter-hyperlink",
+  "author": "lumine-code",
+  "version": "1.0.0",
+  "description": "A Tree-sitter grammar for URLs in prose.",
   "main": "bindings/node",
   "types": "bindings/node",
-  "scripts": {
-    "install": "node-gyp-build",
-    "prestart": "tree-sitter build --wasm",
-    "start": "tree-sitter playground",
-    "test": "node --test bindings/node/*_test.js",
-    "test:all": "tree-sitter test && node --test bindings/node/*_test.js && jasmine spec/*-spec.js"
+  "repository": "https://github.com/lumine-code/tree-sitter-hyperlink",
+  "bugs": "https://github.com/lumine-code/tree-sitter-hyperlink/issues",
+  "homepage": "https://github.com/lumine-code/tree-sitter-hyperlink",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/savetheclocktower/tree-sitter-hyperlink"
+  "engines": {
+    "node": ">=24"
   },
+  "packageManager": "npm@11.16.0",
   "keywords": [
     "tree-sitter",
-    "grammar"
+    "hyperlink",
+    "url",
+    "uri",
+    "prose",
+    "grammar",
+    "parser"
   ],
   "files": [
+    "*.wasm",
+    "bindings/node",
     "grammar.js",
-    "binding.gyp",
-    "prebuilds/**",
-    "bindings/node/*",
-    "queries/*",
-    "src/**"
+    "queries",
+    "src",
+    "tree-sitter.json",
+    "binding.gyp"
   ],
-  "author": "Andrew Dupont",
-  "license": "MIT",
   "dependencies": {
-    "node-addon-api": "^7.1.0",
-    "node-gyp-build": "^4.8.0",
-    "tree-sitter": "^0.21.1"
+    "node-addon-api": "^8.9.0",
+    "node-gyp-build": "^4.8.4"
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "0.26.11"
   },
   "peerDependencies": {
-    "tree-sitter": "^0.21.0"
+    "tree-sitter": "^0.25.0"
   },
   "peerDependenciesMeta": {
-    "tree_sitter": {
+    "tree-sitter": {
       "optional": true
     }
   },
-  "tree-sitter": [
-    {
-      "scope": "text.hyperlink",
-      "file-types": [
-        "hyperlink"
-      ],
-      "injection-regex": "^hyperlink$",
-      "highlights": [
-        "queries/highlights.scm"
-      ]
-    }
-  ],
-  "devDependencies": {
-    "jasmine": "^5.4.0",
-    "prebuildify": "^6.0.0",
-    "tree-sitter-cli": "^0.22.6"
+  "scripts": {
+    "build": "tree-sitter generate && node-gyp rebuild",
+    "build:wasm": "tree-sitter build --wasm",
+    "generate": "tree-sitter generate",
+    "install": "node-gyp-build",
+    "test": "node --test bindings/node/binding_test.js && tree-sitter test"
   }
 }

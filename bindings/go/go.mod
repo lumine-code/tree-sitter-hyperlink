@@ -1,4 +1,4 @@
-module github.com/tree-sitter/tree-sitter-hyperlink
+module github.com/lumine-code/tree-sitter-hyperlink
 
 go 1.22
 
