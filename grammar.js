@@ -83,17 +83,38 @@ module.exports = grammar({
       // sense, but for now this should be enough.
       seq(
         optional($._qs_middle),
-        '(',
-        optional($._qs_middle),
-        token(prec(3, ')'))
+        $._paren_group
       ),
+    ),
+
+    // A balanced `(…)` group, which may itself contain balanced groups.
+    //
+    // This has to recurse. Neither `(` nor `)` is in `_qs_non_accepting` any
+    // more, so `_qs_middle` can no longer supply the inner pair of
+    // `…/a(b(c)d)e` the way it used to.
+    //
+    // It deliberately lists the two atomic tokens rather than `_qs_middle`,
+    // because `_qs_middle` is itself a `repeat1` and repeating it here is an
+    // unresolved conflict.
+    _paren_group: $ => seq(
+      '(',
+      repeat(choice($._qs_non_accepting, $._qs_accepting, $._paren_group)),
+      token(prec(3, ')'))
     ),
 
     // Valid characters to appear in a domain name before the dot and TLD.
     _domain_accepting: _ => token.immediate(/[a-zA-Z0-9_\-]+/),
 
-    // Valid characters at any position in a URL path or query string.
-    _qs_accepting: _ => token.immediate(/[a-zA-Z0-9_&*@\\`^$=\-\d%|+#/~\-]+/), // TODO: Possibly others?
+    // Valid characters at any position in a URL path or query string,
+    // including the very end.
+    //
+    // `*`, `_`, `~` and `` ` `` are legal in a URL but are excluded here,
+    // because this grammar only ever runs over prose — and in prose they are
+    // markdown emphasis, strikethrough and code delimiters far more often than
+    // they are the last character of a link. GFM's own autolink extension
+    // draws the line in the same place, excluding `? ! . , : * _ ~` from the
+    // end of an autolink. They stay legal mid-URL via `_qs_non_accepting`.
+    _qs_accepting: _ => token.immediate(/[a-zA-Z0-9&@\\^$=\-\d%|+#/\-]+/), // TODO: Possibly others?
 
     // Characters that are generally invalid at the _end_ of a URL path or
     // query string, but valid anywhere else.
@@ -113,7 +134,13 @@ module.exports = grammar({
     // truly necessary; but I haven't seen any evidence that it's necessary.
     // The TM grammar didn’t envision that either character could be valid in
     // a query string or path.
-    _qs_non_accepting: _ => token.immediate(/[:,.!?;{}\[\]\(\)]+/),
+    //
+    // NOTE: `(` and `)` used to be in this list too, which quietly defeated
+    // `_delimiter_matching_scenarios` — an unpaired `)` could ride along in
+    // the middle of a URL so long as some later character was accepting, so
+    // `**[a](https://example.com)**` matched through `)**`. Parens now reach a
+    // URL only through `_paren_group`, which insists on the matching `(`.
+    _qs_non_accepting: _ => token.immediate(/[:,.!?;{}\[\]_*`~]+/),
 
     // A shorthand for path or query-string content occurring anywhere but the
     // end of the URL.

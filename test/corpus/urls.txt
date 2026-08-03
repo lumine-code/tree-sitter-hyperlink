@@ -100,3 +100,49 @@ Username with domain name
 URL is http://user@localhost:8080/123?x=459.
 ---
 (prose (url))
+
+===============================
+Markdown link, wrapped in emphasis
+===============================
+
+**[Lumine](https://github.com/lumine-code/lumine)**
+*[a](https://example.com)*
+`[a](https://example.com)`
+~~[a](https://example.com)~~
+---
+(prose (url) (url) (url) (url))
+
+===============================
+Markdown emphasis around a bare URL
+===============================
+
+see *https://example.com* italic
+see **https://example.com** bold
+see `https://example.com` code
+see __https://example.com__ bold
+---
+(prose (url) (url) (url) (url))
+
+===============================
+Markdown image inside a link
+===============================
+
+[![img](https://img.example.com/a.svg)](https://example.com)
+---
+(prose (url) (url))
+
+===============================
+Unpaired closing parenthesis ends the URL
+===============================
+
+https://example.com)https://example.org
+---
+(prose (url) (url))
+
+===============================
+Nested paired parentheses
+===============================
+
+https://example.com/a(b(c)d)e
+---
+(prose (url))
