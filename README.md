@@ -1,65 +1,59 @@
 # tree-sitter-hyperlink
 
-[Tree-sitter](https://github.com/tree-sitter/tree-sitter) grammar for detecting URLs in prose.
+A Tree-sitter grammar for URLs in prose.
 
-Eventually designed to do all the things [TextMate’s hyperlink helper bundle](https://github.com/textmate/hyperlink-helper.tmbundle/blob/master/Syntaxes/Hyperlink.tmLanguage) can do. That bundle got converted to Atom as [language-hyperlink](https://github.com/pulsar-edit/language-hyperlink/), but a tree-sitter version needs to exist for injecting into tree-sitter grammars in [Pulsar](https://pulsar-edit.dev/).
+Meant to be injected into other grammars so that a URL sitting in a comment, a string, or a
+paragraph of prose gets recognized as one. Validating the URL, or its TLD, is out of scope.
 
+## Features
 
-## Syntax
+- **Grammars**: provides Tree-sitter grammars.
+- **Protocols**: recognizes `http` and `https` URLs, and the fragments that lead to them.
+- **Prose delimiters**: refuses to end a URL on punctuation that reads as prose, so a sentence's
+  final period or a markdown emphasis marker stays out of the link.
+- **Balanced parentheses**: keeps a `)` only when its `(` appeared earlier in the URL, nesting
+  included, so `en.wikipedia.org/wiki/Alison_(song)` survives being wrapped in parentheses.
+- **Portable scanner**: supports native and WebAssembly builds through a C external scanner.
 
-Support is currently limited to URLs that
+## Installation
 
-* begin with `http` or `https`,
-* have sections of ordinary text with dots/slashes in between, and
-* do not end with any of `,."']`, all of which are far more likely to be meant
-  as a prose delimiter rather than part of the URL.
-
-URLs that end in `)` will have that `)` included in the URL _if_ it was preceded by an earlier `(` in the URL; otherwise it’ll be treated as a delimiter like the characters listed above.
-
-Validity of the URL, or of any TLDs, is _far_ beyond the ambitions of this parser.
-
-## Examples
-
-URLs that will be correctly identified and highlighted:
-
-```
-http://example.com/foo?bar=baz
-
-You might find my web site at https://example.com. The period at the end of the last sentence is not part of the URL.
-
-One example would be [this one](http://example.com/foo?bar=baz), like in Markdown.
-
-Or this one [http://example.com]
-
-This fragment will be ignored http://
-As will this one https://bleh
-
-CSS URL without quotes:
-@import url(https://www.example.com/style.css);
-
-CSS URL with quotes:
-div {
-  background-image: url("https://www.example.com/style.gif");
-}
-
-also https://example.net.
-
-Good news, Elvis: https://en.wikipedia.org/wiki/Alison_(song) (because the closing parenthesis is mistakenly assumed not to be part of the URL)
-
-<a href="http://example.com">http://example.com</a> (it'll recognize both instances)
-
-[A link to the Elvis Costello song in question](https://en.wikipedia.org/wiki/Alison_(song)) will correctly interpret the first ) as being part of the URL, but _not_ the second one.
-
+```sh
+npm install tree-sitter @lumine-code/tree-sitter-hyperlink
 ```
 
-There are surely some URLs out there in the wild that run afoul of these rules, so open an issue if you like.
+## Usage
 
-## Tests
+```js
+const Parser = require("tree-sitter");
+const Hyperlink = require("@lumine-code/tree-sitter-hyperlink");
 
-What I need to be able to test this properly is to inspect _the exact boundaries_ of a match, and [neither](https://tree-sitter.github.io/tree-sitter/creating-parsers#command-test) [kind](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#unit-testing) of tree-sitter test does exactly what I need it to.
+const parser = new Parser();
+parser.setLanguage(Hyperlink);
+const tree = parser.parse("You might find my web site at https://example.com.");
+```
 
-Until I get around to something more rigorous: if you’re contributing a change and want to guard against regressions, compare the output of `tree-sitter parse examples/example.txt` with the contents of `example_tree.txt`.
+## Where a URL ends
 
-## TODO
+A URL may end on a letter, a digit, or one of `& @ \ ^ $ = - % | + # /`. Everything else is
+legal inside a URL but not at the end of one, because in prose those characters are far more
+likely to belong to the sentence than to the link.
 
-* Fix the issue with parens in URLs — ideally by allowing one `)` for each `(` encountered in a URL, and the same with `[]`
+That includes `* _ ~` and a backtick, which are markdown emphasis, strikethrough and code
+delimiters — the same characters GFM's autolink extension excludes from the end of an autolink.
+So `**[a](https://example.com)**` yields `https://example.com`, not `https://example.com)**`.
+The cost is that a genuine trailing `*` or `_` is trimmed too: `?q=*` parses as `?q=`.
+
+Parentheses are not in either set. A `(` or `)` reaches a URL only as part of a balanced pair,
+so an unpaired `)` ends the URL wherever it appears.
+
+## Building
+
+```sh
+npm install
+npm test
+npm run build:wasm
+```
+
+## Contributing
+
+Got ideas to make this package better, found a bug, or want to help add new features? Just drop your thoughts on GitHub. Any feedback is welcome!
