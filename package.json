@@ -41,11 +41,6 @@
   "devDependencies": {
     "tree-sitter-cli": "0.26.10"
   },
-  "lem": {
-    "hold": {
-      "tree-sitter-cli": "0.26.11 drops U+017F and U+212A from the negated character sets it generates, so a url containing either one stops parsing there. 0.26.10 is the last release without it; raise this once it is fixed upstream and regenerate src/."
-    }
-  },
   "peerDependencies": {
     "tree-sitter": "^0.25.0"
   },
