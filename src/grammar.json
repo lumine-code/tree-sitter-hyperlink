@@ -22,10 +22,6 @@
           {
             "type": "SYMBOL",
             "name": "_non_url_text"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "_space"
           }
         ]
       }
@@ -293,22 +289,43 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "PATTERN",
-              "value": "[^\\sh]+"
+              "type": "REPEAT1",
+              "content": {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "PATTERN",
+                    "value": "[^h:,.!?;{}\\[\\]_*`~()]+"
+                  },
+                  {
+                    "type": "PATTERN",
+                    "value": "h[^ht:,.!?;{}\\[\\]_*`~()]"
+                  },
+                  {
+                    "type": "PATTERN",
+                    "value": "ht[^ht:,.!?;{}\\[\\]_*`~()]"
+                  },
+                  {
+                    "type": "PATTERN",
+                    "value": "htt[^hp:,.!?;{}\\[\\]_*`~()]"
+                  },
+                  {
+                    "type": "PATTERN",
+                    "value": "http[^hs:,.!?;{}\\[\\]_*`~()]"
+                  },
+                  {
+                    "type": "PATTERN",
+                    "value": "https[^h:,.!?;{}\\[\\]_*`~()]"
+                  }
+                ]
+              }
             },
             {
               "type": "PATTERN",
-              "value": "h"
+              "value": "\\S"
             }
           ]
         }
-      }
-    },
-    "_space": {
-      "type": "TOKEN",
-      "content": {
-        "type": "PATTERN",
-        "value": "[\\s\\n]+"
       }
     }
   },

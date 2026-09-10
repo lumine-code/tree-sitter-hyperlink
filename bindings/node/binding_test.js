@@ -20,8 +20,20 @@ test("batches ordinary prose while preserving embedded URLs", () => {
     }
   });
 
-  const tree = parser.parse(`${"x".repeat(4096)} https://example.com`);
+  const tree = parser.parse(`${"the quick brown fox ".repeat(256)}https://example.com`);
 
   assert.strictEqual(tree.rootNode.descendantsOfType("url").length, 1);
   assert.ok(proseTokenCount < 10, `lexed ${proseTokenCount} ordinary-prose tokens`);
+});
+
+test("does not let a batched prose token truncate a paired URL suffix", () => {
+  const parser = new Parser();
+  parser.setLanguage(hyperlink);
+
+  const source = "(see https://en.wikipedia.org/wiki/Foo_(bar))";
+  const tree = parser.parse(source);
+  const urls = tree.rootNode.descendantsOfType("url");
+
+  assert.strictEqual(urls.length, 1);
+  assert.strictEqual(urls[0].text, "https://en.wikipedia.org/wiki/Foo_(bar)");
 });

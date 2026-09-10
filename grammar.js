@@ -20,7 +20,6 @@ module.exports = grammar({
         $._url_with_trailing_characters,
         $._url_fragment,
         $._non_url_text,
-        $._space,
       )
     ),
 
@@ -146,11 +145,20 @@ module.exports = grammar({
     // end of the URL.
     _qs_middle: $ => repeat1(choice($._qs_non_accepting, $._qs_accepting)),
 
-    // Ordinary prose is the overwhelmingly common case. Batch everything
-    // except `h`, because lowercase `h` is the only character that can begin
-    // either supported protocol and therefore has to remain visible to the
-    // lexer as a possible URL start.
-    _non_url_text: _ => token(prec(-1, choice(/[^\sh]+/, /h/))),
-    _space: _ => token(/[\s\n]+/),
+    // Ordinary prose is the overwhelmingly common case. Batch a whole run
+    // while stopping before any `http:` or `https:` prefix embedded in it.
+    // URL delimiters stay one character wide too: when prose follows a URL, a
+    // long fallback token beginning at one must not beat a valid continuation.
+    _non_url_text: _ => token(prec(-1, choice(
+      repeat1(choice(
+        /[^h:,.!?;{}\[\]_*`~()]+/,
+        /h[^ht:,.!?;{}\[\]_*`~()]/,
+        /ht[^ht:,.!?;{}\[\]_*`~()]/,
+        /htt[^hp:,.!?;{}\[\]_*`~()]/,
+        /http[^hs:,.!?;{}\[\]_*`~()]/,
+        /https[^h:,.!?;{}\[\]_*`~()]/,
+      )),
+      /\S/,
+    ))),
   }
 });
