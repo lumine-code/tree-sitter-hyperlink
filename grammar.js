@@ -146,7 +146,11 @@ module.exports = grammar({
     // end of the URL.
     _qs_middle: $ => repeat1(choice($._qs_non_accepting, $._qs_accepting)),
 
-    _non_url_text: _ => token(prec(-1, /\S/)),
+    // Ordinary prose is the overwhelmingly common case. Batch everything
+    // except `h`, because lowercase `h` is the only character that can begin
+    // either supported protocol and therefore has to remain visible to the
+    // lexer as a possible URL start.
+    _non_url_text: _ => token(prec(-1, choice(/[^\sh]+/, /h/))),
     _space: _ => token(/[\s\n]+/),
   }
 });

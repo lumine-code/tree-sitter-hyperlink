@@ -290,8 +290,17 @@
         "type": "PREC",
         "value": -1,
         "content": {
-          "type": "PATTERN",
-          "value": "\\S"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "PATTERN",
+              "value": "[^\\sh]+"
+            },
+            {
+              "type": "PATTERN",
+              "value": "h"
+            }
+          ]
         }
       }
     },
