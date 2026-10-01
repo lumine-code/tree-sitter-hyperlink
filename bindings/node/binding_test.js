@@ -37,3 +37,19 @@ test("does not let a batched prose token truncate a paired URL suffix", () => {
   assert.strictEqual(urls.length, 1);
   assert.strictEqual(urls[0].text, "https://en.wikipedia.org/wiki/Foo_(bar)");
 });
+
+test("keeps query strings before trailing prose", () => {
+  const parser = new Parser();
+  parser.setLanguage(hyperlink);
+
+  for (const url of [
+    "https://example.com/path?q=1",
+    "https://example.com/?a=b&c=d#section",
+    "https://example.com/?filter[name]=x",
+  ]) {
+    const tree = parser.parse(`before ${url} after`);
+    const urls = tree.rootNode.descendantsOfType("url");
+    assert.strictEqual(urls.length, 1);
+    assert.strictEqual(urls[0].text, url);
+  }
+});

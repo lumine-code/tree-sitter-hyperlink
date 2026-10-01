@@ -63,10 +63,13 @@ module.exports = grammar({
 
     _url_segment: $ => choice(
       $._qs_accepting,
-      seq(
+      // Punctuation can also be parsed as a suffix outside the URL. When
+      // both parses reach the following prose, prefer the one that keeps
+      // punctuation followed by URL characters inside the link.
+      prec.dynamic(1, seq(
         $._qs_middle,
         $._qs_accepting
-      ),
+      )),
       $._delimiter_matching_scenarios
     ),
 

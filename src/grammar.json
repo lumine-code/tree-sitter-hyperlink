@@ -159,17 +159,21 @@
           "name": "_qs_accepting"
         },
         {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "_qs_middle"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "_qs_accepting"
-            }
-          ]
+          "type": "PREC_DYNAMIC",
+          "value": 1,
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_qs_middle"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_qs_accepting"
+              }
+            ]
+          }
         },
         {
           "type": "SYMBOL",
