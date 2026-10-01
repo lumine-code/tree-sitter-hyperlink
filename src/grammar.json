@@ -159,23 +159,6 @@
           "name": "_qs_accepting"
         },
         {
-          "type": "PREC_DYNAMIC",
-          "value": 1,
-          "content": {
-            "type": "SEQ",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "_qs_middle"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "_qs_accepting"
-              }
-            ]
-          }
-        },
-        {
           "type": "SYMBOL",
           "name": "_delimiter_matching_scenarios"
         }
@@ -257,8 +240,29 @@
     "_qs_accepting": {
       "type": "IMMEDIATE_TOKEN",
       "content": {
-        "type": "PATTERN",
-        "value": "[a-zA-Z0-9&@\\\\^$=\\-\\d%|+#/\\-]+"
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "PATTERN",
+                  "value": "[a-zA-Z0-9&@\\\\^$=\\-\\d%|+#/\\-]"
+                },
+                {
+                  "type": "PATTERN",
+                  "value": "[:,.!?;{}\\[\\]_*`~]"
+                }
+              ]
+            }
+          },
+          {
+            "type": "PATTERN",
+            "value": "[a-zA-Z0-9&@\\\\^$=\\-\\d%|+#/\\-]+"
+          }
+        ]
       }
     },
     "_qs_non_accepting": {
@@ -335,9 +339,6 @@
   },
   "extras": [],
   "conflicts": [
-    [
-      "_url_segment"
-    ],
     [
       "_url_segment",
       "_delimiter_matching_scenarios"

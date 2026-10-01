@@ -9,7 +9,6 @@ module.exports = grammar({
   ],
 
   conflicts: $ => [
-    [$._url_segment],
     [$._url_segment, $._delimiter_matching_scenarios]
   ],
 
@@ -63,13 +62,6 @@ module.exports = grammar({
 
     _url_segment: $ => choice(
       $._qs_accepting,
-      // Punctuation can also be parsed as a suffix outside the URL. When
-      // both parses reach the following prose, prefer the one that keeps
-      // punctuation followed by URL characters inside the link.
-      prec.dynamic(1, seq(
-        $._qs_middle,
-        $._qs_accepting
-      )),
       $._delimiter_matching_scenarios
     ),
 
@@ -116,7 +108,16 @@ module.exports = grammar({
     // they are the last character of a link. GFM's own autolink extension
     // draws the line in the same place, excluding `? ! . , : * _ ~` from the
     // end of an autolink. They stay legal mid-URL via `_qs_non_accepting`.
-    _qs_accepting: _ => token.immediate(/[a-zA-Z0-9&@\\^$=\-\d%|+#/\-]+/), // TODO: Possibly others?
+    // Keep each punctuation-containing run in one lexer token, marking its
+    // end only on an accepting character. Splitting the run into parser
+    // rules also permits a shorter URL followed by a batched prose token.
+    _qs_accepting: _ => token.immediate(seq(
+      repeat(choice(
+        /[a-zA-Z0-9&@\\^$=\-\d%|+#/\-]/,
+        /[:,.!?;{}\[\]_*`~]/
+      )),
+      /[a-zA-Z0-9&@\\^$=\-\d%|+#/\-]+/
+    )),
 
     // Characters that are generally invalid at the _end_ of a URL path or
     // query string, but valid anywhere else.

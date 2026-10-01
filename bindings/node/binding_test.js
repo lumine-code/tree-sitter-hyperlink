@@ -46,6 +46,9 @@ test("keeps query strings before trailing prose", () => {
     "https://example.com/path?q=1",
     "https://example.com/?a=b&c=d#section",
     "https://example.com/?filter[name]=x",
+    "https://example.com/a?b=a?b=end",
+    "https://example.com/foo?first=1;second=2",
+    "https://example.com/a[b]c",
   ]) {
     const tree = parser.parse(`before ${url} after`);
     const urls = tree.rootNode.descendantsOfType("url");
