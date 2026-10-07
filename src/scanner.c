@@ -1,11 +1,20 @@
 #include "tree_sitter/parser.h"
+#include "tree_sitter/alloc.h"
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
-enum TokenType { URL, TEXT };
-
-// Small text tokens let incremental parses reuse the rest of a long paragraph.
+enum TokenType {
+  START, RANGE_START, RUN, TAIL, OPEN, CLOSE, TEXT, RANGE_TEXT,
+};
 enum { TEXT_CHUNK_SIZE = 4096 };
+
+typedef struct {
+  // This changes batching only. No matching decision depends on a cached
+  // future suffix, a source position, or a cumulative parenthesis depth.
+  bool in_url;
+} Scanner;
 
 static bool is_hostname_character(int32_t character) {
   return (character >= 'a' && character <= 'z') ||
@@ -44,123 +53,175 @@ static bool is_middle_character(int32_t character) {
   }
 }
 
-// On failure, leave the first mismatching character unread. It may itself
-// begin a URL, as in "hhttps://example.com". A prefix never crosses a range.
-static bool scan_prefix(TSLexer *lexer, uint32_t *text_size) {
+static bool at_boundary(TSLexer *lexer) {
+  return lexer->eof(lexer) || lexer->is_at_included_range_start(lexer);
+}
+
+static bool emit(TSLexer *lexer, const bool *valid_symbols, enum TokenType symbol) {
+  if (!valid_symbols[symbol]) return false;
+  lexer->result_symbol = symbol;
+  return true;
+}
+
+// Consume only a bounded prefix on failure and leave its mismatching character
+// unread. It may start another prefix, as in "hhttps://example.com".
+// A caller with preceding prose keeps its mark; an existing URL continuation
+// may mark accepted prefix characters even when the prefix later fails.
+static bool scan_prefix(
+  TSLexer *lexer, uint32_t *count, bool *last_accepting, bool mark_progress
+) {
   const char *prefix = "http";
   while (*prefix) {
     if (lexer->eof(lexer) || lexer->lookahead != *prefix) return false;
+    *last_accepting = is_accepting_character(lexer->lookahead);
     lexer->advance(lexer, false);
-    (*text_size)++;
+    if (mark_progress && *last_accepting) lexer->mark_end(lexer);
+    (*count)++;
     prefix++;
-    if (lexer->is_at_included_range_start(lexer)) return false;
+    if (at_boundary(lexer)) return false;
   }
   if (lexer->lookahead == 's') {
+    *last_accepting = true;
     lexer->advance(lexer, false);
-    (*text_size)++;
-    if (lexer->is_at_included_range_start(lexer)) return false;
+    if (mark_progress) lexer->mark_end(lexer);
+    (*count)++;
+    if (at_boundary(lexer)) return false;
   }
   prefix = "://";
   while (*prefix) {
     if (lexer->eof(lexer) || lexer->lookahead != *prefix) return false;
+    *last_accepting = is_accepting_character(lexer->lookahead);
     lexer->advance(lexer, false);
-    (*text_size)++;
+    if (mark_progress && *last_accepting) lexer->mark_end(lexer);
+    (*count)++;
     prefix++;
-    if (lexer->is_at_included_range_start(lexer)) return false;
+    if (at_boundary(lexer)) return false;
   }
   return !lexer->eof(lexer) && is_hostname_character(lexer->lookahead);
 }
 
-static bool scan_url(TSLexer *lexer) {
-  uint32_t parentheses = 0;
-  bool has_end = false;
-  while (!lexer->eof(lexer)) {
-    int32_t character = lexer->lookahead;
-    if (character == '(') {
-      parentheses++;
-    } else if (character == ')') {
-      if (parentheses == 0) break;
-      parentheses--;
-    } else if (!is_accepting_character(character) &&
-               !is_middle_character(character)) {
-      break;
-    }
-    lexer->advance(lexer, false);
-    // Do not extend a URL into a group until its outermost parenthesis closes.
-    if (parentheses == 0 &&
-        (is_accepting_character(character) || character == ')')) {
-      lexer->mark_end(lexer);
-      has_end = true;
-    }
-    if (lexer->is_at_included_range_start(lexer)) break;
-  }
-  return has_end;
-}
-
-void *tree_sitter_hyperlink_external_scanner_create(void) { return NULL; }
-
-bool tree_sitter_hyperlink_external_scanner_scan(
-  void *payload, TSLexer *lexer, const bool *valid_symbols
+static bool scan_run(
+  TSLexer *lexer, const bool *valid_symbols, uint32_t count,
+  bool has_accepting_end, bool last_accepting
 ) {
-  (void)payload;
-  if (lexer->eof(lexer)) return false;
-
-  bool has_text = false;
-  uint32_t text_size = 0;
-  while (!lexer->eof(lexer)) {
-    if (has_text && (text_size >= TEXT_CHUNK_SIZE ||
-                     lexer->is_at_included_range_start(lexer))) break;
-    if (lexer->lookahead == 'h' && valid_symbols[URL]) {
-      // Preserve the end of preceding text while looking ahead for a prefix.
-      if (has_text) lexer->mark_end(lexer);
-      if (scan_prefix(lexer, &text_size)) {
-        if (has_text) {
-          if (!valid_symbols[TEXT]) return false;
-          lexer->result_symbol = TEXT;
-          return true;
-        }
-        if (scan_url(lexer)) {
-          lexer->result_symbol = URL;
-          return true;
-        }
-        // A host consisting entirely of non-accepting characters is text.
-        if (!valid_symbols[TEXT]) return false;
-        lexer->mark_end(lexer);
-        lexer->result_symbol = TEXT;
-        return true;
+  while (!lexer->eof(lexer) && count < TEXT_CHUNK_SIZE) {
+    if (count && lexer->is_at_included_range_start(lexer)) break;
+    int32_t character = lexer->lookahead;
+    if (character == 'h' && count) {
+      if (has_accepting_end && !last_accepting) break;
+      lexer->mark_end(lexer);
+      uint32_t prefix_size = 0;
+      bool prefix_accepting = false;
+      if (scan_prefix(lexer, &prefix_size, &prefix_accepting, false) || !prefix_accepting) {
+        return emit(lexer, valid_symbols, has_accepting_end ? RUN : TAIL);
       }
-      has_text = true;
-      if (lexer->is_at_included_range_start(lexer)) break;
+      count += prefix_size;
+      has_accepting_end = last_accepting = true;
+      lexer->mark_end(lexer);
       continue;
     }
-    int32_t character = lexer->lookahead;
+    if (!is_accepting_character(character) && !is_middle_character(character)) break;
+    last_accepting = is_accepting_character(character);
     lexer->advance(lexer, false);
-    has_text = true;
-    text_size++;
-    if (character == '\n' || character == '\r') break;
+    count++;
+    if (last_accepting) {
+      has_accepting_end = true;
+      lexer->mark_end(lexer);
+    }
+    if (at_boundary(lexer)) break;
   }
-  if (!has_text || !valid_symbols[TEXT]) return false;
-  lexer->mark_end(lexer);
-  lexer->result_symbol = TEXT;
-  return true;
+  if (!count) return false;
+  if (!has_accepting_end) lexer->mark_end(lexer);
+  return emit(lexer, valid_symbols, has_accepting_end ? RUN : TAIL);
 }
 
-unsigned tree_sitter_hyperlink_external_scanner_serialize(
-  void *payload, char *buffer
-) {
-  (void)payload;
-  (void)buffer;
-  return 0;
+void *tree_sitter_hyperlink_external_scanner_create(void) {
+  return ts_calloc(1, sizeof(Scanner));
+}
+
+void tree_sitter_hyperlink_external_scanner_destroy(void *payload) {
+  ts_free(payload);
+}
+
+unsigned tree_sitter_hyperlink_external_scanner_serialize(void *payload, char *buffer) {
+  if (!payload) return 0;
+  buffer[0] = ((Scanner *)payload)->in_url ? 1 : 0;
+  return 1;
 }
 
 void tree_sitter_hyperlink_external_scanner_deserialize(
   void *payload, const char *buffer, unsigned length
 ) {
-  (void)payload;
-  (void)buffer;
-  (void)length;
+  if (payload) ((Scanner *)payload)->in_url = length == 1 && buffer && buffer[0] == 1;
 }
 
-void tree_sitter_hyperlink_external_scanner_destroy(void *payload) {
-  (void)payload;
+bool tree_sitter_hyperlink_external_scanner_scan(
+  void *payload, TSLexer *lexer, const bool *valid_symbols
+) {
+  Scanner *scanner = payload;
+  if (!scanner || lexer->eof(lexer)) return false;
+  bool range_start = lexer->is_at_included_range_start(lexer);
+  if (range_start) scanner->in_url = false;
+  if (lexer->lookahead == '(' || lexer->lookahead == ')') {
+    int32_t character = lexer->lookahead;
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    // A token at a new range cannot finish a group from the preceding range.
+    return emit(lexer, valid_symbols,
+      range_start ? RANGE_TEXT : character == '(' ? OPEN : CLOSE);
+  }
+
+  uint32_t count = 0;
+  bool last_accepting = false;
+  if (lexer->lookahead == 'h') {
+    if (scan_prefix(lexer, &count, &last_accepting, scanner->in_url)) {
+      bool has_end = false;
+      while (!lexer->eof(lexer) && count < TEXT_CHUNK_SIZE &&
+             !lexer->is_at_included_range_start(lexer) &&
+             (is_accepting_character(lexer->lookahead) || is_middle_character(lexer->lookahead))) {
+        int32_t character = lexer->lookahead;
+        lexer->advance(lexer, false);
+        count++;
+        if (is_accepting_character(character)) {
+          has_end = true;
+          lexer->mark_end(lexer);
+        }
+      }
+      if (has_end) {
+        scanner->in_url = true;
+        return emit(lexer, valid_symbols, range_start ? RANGE_START : START);
+      }
+      if (scanner->in_url) return emit(lexer, valid_symbols, RUN);
+      lexer->mark_end(lexer);
+      scanner->in_url = false;
+      return emit(lexer, valid_symbols, range_start ? RANGE_TEXT : TEXT);
+    }
+    if (scanner->in_url) {
+      return scan_run(lexer, valid_symbols, count, true, last_accepting);
+    }
+  } else if (scanner->in_url &&
+             (is_accepting_character(lexer->lookahead) || is_middle_character(lexer->lookahead))) {
+    return scan_run(lexer, valid_symbols, 0, false, false);
+  }
+
+  scanner->in_url = false;
+  while (!lexer->eof(lexer) && count < TEXT_CHUNK_SIZE) {
+    if (count && lexer->is_at_included_range_start(lexer)) break;
+    if (lexer->lookahead == '(' || lexer->lookahead == ')') break;
+    if (lexer->lookahead == 'h') {
+      if (count) lexer->mark_end(lexer);
+      uint32_t prefix_size = 0;
+      bool prefix_accepting = false;
+      if (scan_prefix(lexer, &prefix_size, &prefix_accepting, false) && count) {
+        return emit(lexer, valid_symbols, range_start ? RANGE_TEXT : TEXT);
+      }
+      count += prefix_size;
+      continue;
+    }
+    lexer->advance(lexer, false);
+    count++;
+  }
+  if (!count) return false;
+  lexer->mark_end(lexer);
+  return emit(lexer, valid_symbols, range_start ? RANGE_TEXT : TEXT);
 }

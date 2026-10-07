@@ -13,23 +13,167 @@
           },
           {
             "type": "SYMBOL",
+            "name": "_run"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_tail"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_open"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_close"
+          },
+          {
+            "type": "SYMBOL",
             "name": "_text"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_range_text"
           }
         ]
       }
+    },
+    "url": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_start"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_range_start"
+            }
+          ]
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_part"
+          }
+        }
+      ]
+    },
+    "_part": {
+      "type": "PREC_DYNAMIC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_tail"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_run"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_start"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_group"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "_group": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_open"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_run"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_tail"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_group"
+              }
+            ]
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_close"
+        }
+      ]
     }
   },
   "extras": [],
-  "conflicts": [],
+  "conflicts": [
+    [
+      "url"
+    ]
+  ],
   "precedences": [],
   "externals": [
     {
       "type": "SYMBOL",
-      "name": "url"
+      "name": "_start"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_range_start"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_run"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_tail"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_open"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_close"
     },
     {
       "type": "SYMBOL",
       "name": "_text"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_range_text"
     }
   ],
   "inline": [],

@@ -55,7 +55,7 @@ function parse(test, parser, source, oldTree = null, options) {
 }
 
 function logCounts(parser, textType) {
-  const counts = { text: 0, steps: 0, consumed: 0 };
+  const counts = { text: 0, steps: 0, consumed: 0, reductions: 0 };
   parser.setLogger((message, parameters) => {
     if (
       message === "lexed_lookahead" ||
@@ -65,6 +65,8 @@ function logCounts(parser, textType) {
       if (symbol === textType) counts.text++;
     }
     if (message === "process" || message.startsWith("process ")) counts.steps++;
+    if (message === "reduce" || message.startsWith("reduce "))
+      counts.reductions++;
     if (message === "consume" || message.startsWith("consume "))
       counts.consumed++;
   });

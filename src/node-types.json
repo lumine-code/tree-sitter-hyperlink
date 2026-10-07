@@ -17,6 +17,7 @@
   },
   {
     "type": "url",
-    "named": true
+    "named": true,
+    "fields": {}
   }
 ]

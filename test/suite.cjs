@@ -49,6 +49,71 @@ module.exports = function registerTests(create) {
     }
   });
 
+  test("starts another link at HTTP prefixes inside parentheses", (t) => {
+    const parser = parserFor(t, create);
+    for (const [source, expected] of [
+      ["https://x/a(http://y/path)", ["https://x/a", "http://y/path"]],
+      ["https://x(https://y(a)", ["https://x", "https://y(a)"]],
+      ["https://x(blahhttps://y(", ["https://x", "https://y"]],
+      ["https://x?q=https://y", ["https://x?q=https://y"]],
+      ["https://x/a(b)http:? after", ["https://x/a(b)http"]],
+      ["https://x/a(b)http://___ after", ["https://x/a(b)http://"]],
+      ["https://x)http://___ after", ["https://x"]],
+    ]) {
+      const tree = parse(t, parser, source);
+      assert.deepEqual(
+        tree.rootNode.descendantsOfType("url").map((node) => node.text),
+        expected,
+      );
+    }
+  });
+
+  test("keeps lexer and parser work linear across incomplete and balanced groups", (t) => {
+    const parser = parserFor(t, create);
+    for (const count of [128, 512, 2048]) {
+      for (const [source, urls, expected] of [
+        ["https://x(".repeat(count), count, null],
+        ["https://x" + "(".repeat(count), 1, "https://x"],
+        ["https://x" + "(".repeat(count) + "a" + ")".repeat(count), 1, null],
+        ["https://x" + "(a)".repeat(count), 1, null],
+      ]) {
+        const counts = logCounts(parser, "_text");
+        const tree = parse(t, parser, source);
+        parser.setLogger(null);
+        const nodes = tree.rootNode.descendantsOfType("url");
+        assert.equal(nodes.length, urls);
+        if (expected) assert.equal(nodes[0].text, expected);
+        else if (urls === 1) assert.equal(nodes[0].text, source);
+        assert.ok(counts.consumed < source.length * 8, JSON.stringify(counts));
+        assert.ok(counts.steps < source.length * 5, JSON.stringify(counts));
+        assert.ok(
+          counts.reductions < source.length * 5,
+          JSON.stringify(counts),
+        );
+      }
+    }
+  });
+
+  test("rebuilds grouping decisions after delimiter and prefix edits", (t) => {
+    const parser = parserFor(t, create);
+    for (const [before, offset, deleted, inserted] of [
+      ["https://x/a(b", 13, 0, ")"],
+      ["https://x/a(b)", 13, 1, ""],
+      ["https://x/a(http://y)", 20, 1, ""],
+      ["https://x/a(text)", 12, 4, "http://y"],
+      ["https://x?a=https://y", 11, 0, "("],
+      ["https://x(".repeat(128), 1279, 0, ")"],
+    ]) {
+      const old = parse(t, parser, before);
+      const after = edit(old, before, offset, deleted, inserted);
+      const incremental = parse(t, parser, after, old);
+      assert.deepEqual(
+        snapshot(incremental, ["url"]),
+        snapshot(parse(t, parser, after), ["url"]),
+      );
+    }
+  });
+
   test("preserves punctuation within complete queries and paths", (t) => {
     const parser = parserFor(t, create);
     for (const url of [
@@ -101,6 +166,26 @@ module.exports = function registerTests(create) {
       includedRanges: ranges(fragment, ["htt", "ps://example.com"]),
     });
     assert.equal(fragmented.rootNode.descendantsOfType("url").length, 0);
+  });
+
+  test("rebuilds balanced groups when included ranges expose or hide a closer", (t) => {
+    const parser = parserFor(t, create);
+    const source = "https://x/a(b)";
+    const initialOptions = {
+      includedRanges: ranges(source, [source.slice(0, -1)]),
+    };
+    const fullOptions = { includedRanges: ranges(source, [source]) };
+    const partial = parse(t, parser, source, null, initialOptions);
+    const expanded = parse(t, parser, source, partial, fullOptions);
+    assert.deepEqual(
+      snapshot(expanded, ["url"]),
+      snapshot(parse(t, parser, source, null, fullOptions), ["url"]),
+    );
+    const contracted = parse(t, parser, source, expanded, initialOptions);
+    assert.deepEqual(
+      snapshot(contracted, ["url"]),
+      snapshot(parse(t, parser, source, null, initialOptions), ["url"]),
+    );
   });
 
   test("batches punctuation and overlapping failed prefixes with bounded parser work", (t) => {
