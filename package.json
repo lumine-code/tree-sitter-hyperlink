@@ -31,6 +31,7 @@
     "grammar.js",
     "queries",
     "src",
+    "test",
     "tree-sitter.json",
     "binding.gyp"
   ],
@@ -40,7 +41,8 @@
   },
   "devDependencies": {
     "tree-sitter": "^0.25.1",
-    "tree-sitter-cli": "0.27.0"
+    "tree-sitter-cli": "0.27.0",
+    "web-tree-sitter": "0.27.0"
   },
   "peerDependencies": {
     "tree-sitter": "^0.25.0"
@@ -53,6 +55,7 @@
   "scripts": {
     "build": "tree-sitter generate && node-gyp rebuild",
     "build:wasm": "tree-sitter build --wasm",
+    "test:wasm": "npm run build:wasm && node --test test/wasm_test.cjs",
     "generate": "tree-sitter generate",
     "install": "node-gyp-build",
     "test": "node --test bindings/node/binding_test.js && tree-sitter test"

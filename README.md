@@ -7,10 +7,11 @@ Meant to be injected into other grammars so that a URL sitting in a comment, a s
 ## Features
 
 - **Grammars**: provides Tree-sitter grammars.
-- **Protocols**: recognizes `http` and `https` URLs, and the fragments that lead to them.
+- **Protocols**: recognizes lowercase `http` and `https` URLs inside text.
 - **Prose delimiters**: refuses to end a URL on punctuation that reads as prose, so a sentence's final period or a markdown emphasis marker stays out of the link.
 - **Balanced parentheses**: keeps a `)` only when its `(` appeared earlier in the URL, nesting included, so `en.wikipedia.org/wiki/Alison_(song)` survives being wrapped in parentheses.
-- **Portable scanner**: supports native and WebAssembly builds through a C external scanner.
+- **Portable scanner**: recognizes complete URL ranges in one pass in native and WebAssembly builds.
+- **Incremental parsing**: batches ordinary text into bounded chunks, including punctuation and failed URL prefixes.
 
 ## Installation
 
@@ -37,14 +38,14 @@ Query strings and punctuation within a URL stay part of the link when ordinary p
 
 That includes `* _ ~` and a backtick, which are markdown emphasis, strikethrough and code delimiters — the same characters GFM's autolink extension excludes from the end of an autolink. So `**[a](https://example.com)**` yields `https://example.com`, not `https://example.com)**`. The cost is that a genuine trailing `*` or `_` is trimmed too: `?q=*` parses as `?q=`.
 
-Parentheses are not in either set. A `(` or `)` reaches a URL only as part of a balanced pair, so an unpaired `)` ends the URL wherever it appears.
+Parentheses are not in either set. A `(` or `)` reaches a URL only as part of a balanced pair. An unpaired `)` ends the URL wherever it appears, and an incomplete opening group stays outside the URL without producing a syntax error. Tokens do not cross disjoint included ranges.
 
 ## Building
 
 ```sh
 npm install
 npm test
-npm run build:wasm
+npm run test:wasm
 ```
 
 ## Contributing

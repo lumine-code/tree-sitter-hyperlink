@@ -17,27 +17,6 @@
   },
   {
     "type": "url",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "(",
-    "named": false
-  },
-  {
-    "type": ")",
-    "named": false
-  },
-  {
-    "type": "//",
-    "named": false
-  },
-  {
-    "type": "http:",
-    "named": false
-  },
-  {
-    "type": "https:",
-    "named": false
+    "named": true
   }
 ]
