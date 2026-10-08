@@ -2,6 +2,8 @@
 
 A Tree-sitter grammar for URLs in prose.
 
+Fork of [savetheclocktower/tree-sitter-hyperlink](https://github.com/savetheclocktower/tree-sitter-hyperlink).
+
 Meant to be injected into other grammars so that a URL sitting in a comment, a string, or a paragraph of prose gets recognized as one. Validating the URL, or its TLD, is out of scope.
 
 ## Features
