@@ -32,6 +32,8 @@ static bool is_accepting_character(int32_t character) {
 }
 
 static bool is_middle_character(int32_t character) {
+  // Raw braces delimit source constructs such as LaTeX arguments. Literal
+  // braces in a URL must be percent-encoded rather than joining its label.
   switch (character) {
     case ':':
     case ',':
@@ -39,8 +41,6 @@ static bool is_middle_character(int32_t character) {
     case '!':
     case '?':
     case ';':
-    case '{':
-    case '}':
     case '[':
     case ']':
     case '_':

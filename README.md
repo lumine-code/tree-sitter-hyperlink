@@ -34,11 +34,13 @@ const tree = parser.parse("You might find my web site at https://example.com.");
 
 ## Where a URL ends
 
-A URL may end on a letter, a digit, or one of `& @ \ ^ $ = - % | + # /`. Everything else is legal inside a URL but not at the end of one, because in prose those characters are far more likely to belong to the sentence than to the link.
+A URL may end on a letter, a digit, or one of `& @ \ ^ $ = - % | + # /`. Other URL punctuation can appear inside a URL but not at the end of one, because in prose those characters are far more likely to belong to the sentence than to the link.
 
 Query strings and punctuation within a URL stay part of the link when ordinary prose follows it.
 
 That includes `* _ ~` and a backtick, which are markdown emphasis, strikethrough and code delimiters — the same characters GFM's autolink extension excludes from the end of an autolink. So `**[a](https://example.com)**` yields `https://example.com`, not `https://example.com)**`. The cost is that a genuine trailing `*` or `_` is trimmed too: `?q=*` parses as `?q=`.
+
+Raw curly braces always end a URL, so `\href{https://example.com/manual.pdf}{Manual}` links only the address. URLs containing literal braces must percent-encode them as `%7B` and `%7D`.
 
 Parentheses are not in either set. A `(` or `)` reaches a URL only as part of a balanced pair. An unpaired `)` ends the URL wherever it appears, and an incomplete opening group stays outside the URL without producing a syntax error. Tokens do not cross disjoint included ranges.
 

@@ -49,6 +49,14 @@ Terminal parenthesis (unpaired)
 (prose (url))
 
 ===============================
+LaTeX href in a Python raw string
+===============================
+
+doc.x(r'''opis \href{https://example.com/manual.pdf}{Caltrans, Trenching and Shoring Manual}.''')
+---
+(prose (url))
+
+===============================
 Terminal parenthesis (paired)
 ===============================
 

@@ -68,6 +68,39 @@ module.exports = function registerTests(create) {
     }
   });
 
+  test("keeps source braces outside URLs", (t) => {
+    const parser = parserFor(t, create);
+    const pdf =
+      "https://dot.ca.gov/-/media/dot-media/programs/engineering/documents/structureconstruction/201906-sc-trenchingshoring-a11y.pdf";
+    for (const [source, expected] of [
+      [
+        `doc.x(r'''opis \\href{${pdf}}{Caltrans, Trenching and Shoring Manual, rozdział 8}.''')`,
+        [pdf],
+      ],
+      ["\\url{https://example.com/path}next", ["https://example.com/path"]],
+      ["{https://example.com}{label}", ["https://example.com"]],
+      ["https://example.com/{template}/end", ["https://example.com/"]],
+      ["https://example.com/path}suffix", ["https://example.com/path"]],
+      ["https://example.com/?q={value}&page=1", ["https://example.com/?q="]],
+      [
+        "https://example.com/?q=%7Bvalue%7D&page=1",
+        ["https://example.com/?q=%7Bvalue%7D&page=1"],
+      ],
+      [
+        "https://example.com/a(b)}{https://example.org/end}",
+        ["https://example.com/a(b)", "https://example.org/end"],
+      ],
+      ["https://example.com/a(b{label})", ["https://example.com/a"]],
+    ]) {
+      const tree = parse(t, parser, source);
+      assert.deepEqual(
+        tree.rootNode.descendantsOfType("url").map((node) => node.text),
+        expected,
+        source,
+      );
+    }
+  });
+
   test("keeps lexer and parser work linear across incomplete and balanced groups", (t) => {
     const parser = parserFor(t, create);
     for (const count of [128, 512, 2048]) {
@@ -103,6 +136,9 @@ module.exports = function registerTests(create) {
       ["https://x/a(text)", 12, 4, "http://y"],
       ["https://x?a=https://y", 11, 0, "("],
       ["https://x(".repeat(128), 1279, 0, ")"],
+      ["https://example.com/path}label", 24, 1, ""],
+      ["https://example.com/pathlabel", 24, 0, "}"],
+      ["https://example.com/a(b)c", 22, 0, "{"],
     ]) {
       const old = parse(t, parser, before);
       const after = edit(old, before, offset, deleted, inserted);
@@ -273,6 +309,8 @@ module.exports = function registerTests(create) {
       "http://",
       "https://example.com/a(b)c",
       "https://example.com/a(b",
+      "\\href{https://example.com/a}{label}",
+      "https://example.com/?q=%7Bvalue%7D",
       " ) ",
       "***",
       "\n",
