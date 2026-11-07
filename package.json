@@ -42,8 +42,8 @@
   },
   "devDependencies": {
     "tree-sitter": "^0.25.1",
-    "tree-sitter-cli": "0.27.1",
-    "web-tree-sitter": "0.27.1"
+    "tree-sitter-cli": "0.27.2",
+    "web-tree-sitter": "0.27.2"
   },
   "peerDependencies": {
     "tree-sitter": "^0.25.1"
